@@ -173,7 +173,7 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
             opts.abortSignal?.removeEventListener("abort", onAbort);
             resolve();
           };
-          opts.abortSignal.addEventListener("abort", onAbort, { once: true });
+          opts.abortSignal?.addEventListener("abort", onAbort, { once: true });
         });
       }
       return;
