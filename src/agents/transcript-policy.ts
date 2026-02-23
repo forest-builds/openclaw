@@ -116,6 +116,13 @@ export function resolveTranscriptPolicy(params: {
   const repairToolUseResultPairing = true;
   const sanitizeThoughtSignatures =
     isOpenRouterGemini || isGoogle ? { allowBase64Only: true, includeCamelCase: true } : undefined;
+  // Regular Anthropic also requires thinking block signatures when the
+  // interleaved-thinking-2025-05-14 beta is active (applied to all Anthropic
+  // API calls).  Blocks saved from an interrupted stream have no signature and
+  // will be rejected with "thinking blocks in the latest assistant message
+  // cannot be modified".  Convert unsigned blocks to text so the session can
+  // recover.
+  const sanitizeThinkingSignatures = isAntigravityClaudeModel || isAnthropic;
 
   return {
     sanitizeMode: isOpenAi ? "images-only" : needsNonImageSanitize ? "full" : "images-only",
@@ -125,7 +132,7 @@ export function resolveTranscriptPolicy(params: {
     repairToolUseResultPairing,
     preserveSignatures: false,
     sanitizeThoughtSignatures: isOpenAi ? undefined : sanitizeThoughtSignatures,
-    sanitizeThinkingSignatures: false,
+    sanitizeThinkingSignatures,
     dropThinkingBlocks,
     applyGoogleTurnOrdering: !isOpenAi && isGoogle,
     validateGeminiTurns: !isOpenAi && isGoogle,
