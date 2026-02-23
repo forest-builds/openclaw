@@ -1194,8 +1194,16 @@ export async function runEmbeddedAttempt(
           ? sanitizeToolUseResultPairing(truncated)
           : truncated;
         cacheTrace?.recordStage("session:limited", { messages: limited });
-        if (limited.length > 0) {
-          activeSession.agent.replaceMessages(limited);
+        // Sanitize unsigned thinking blocks loaded from disk before sending to
+        // Anthropic API. The interleaved-thinking-2025-05-14 beta rejects blocks
+        // saved without a signature (stream interrupted before signature arrived).
+        const sanitizedLimited = transcriptPolicy.sanitizeThinkingSignatures
+          ? (sanitizeAntigravityThinkingBlocks(
+              limited as unknown as AgentMessage[],
+            ) as unknown as typeof limited)
+          : limited;
+        if (sanitizedLimited.length > 0) {
+          activeSession.agent.replaceMessages(sanitizedLimited);
         }
       } catch (err) {
         await flushPendingToolResultsAfterIdle({
