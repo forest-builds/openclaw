@@ -124,6 +124,24 @@ function isConfigError(err: unknown): boolean {
 }
 
 /**
+ * Checks if an error is an mDNS assertion from @homebridge/ciao.
+ * This library panics with ERR_ASSERTION when network interfaces change (e.g. WiFi
+ * reconnects after sleep). The crash is non-fatal: local mDNS discovery won't reflect
+ * the new address until restart, but the gateway remains fully functional.
+ */
+function isCiaoMdnsError(err: unknown): boolean {
+  if (!err || typeof err !== "object") {
+    return false;
+  }
+  const code = extractErrorCode(err);
+  if (code !== "ERR_ASSERTION") {
+    return false;
+  }
+  const stack = "stack" in err && typeof err.stack === "string" ? err.stack : "";
+  return stack.includes("@homebridge") || stack.includes("MDNSServer") || stack.includes("/ciao/");
+}
+
+/**
  * Checks if an error is a transient network error that shouldn't crash the gateway.
  * These are typically temporary connectivity issues that will resolve on their own.
  */
@@ -231,6 +249,14 @@ export function installUnhandledRejectionHandler(): void {
     if (isTransientNetworkError(reason)) {
       console.warn(
         "[openclaw] Non-fatal unhandled rejection (continuing):",
+        formatUncaughtError(reason),
+      );
+      return;
+    }
+
+    if (isCiaoMdnsError(reason)) {
+      console.warn(
+        "[openclaw] mDNS network interface change (non-fatal, local discovery may be stale):",
         formatUncaughtError(reason),
       );
       return;
